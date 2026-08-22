@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * Illustrated 2D room intro. A single background illustration (the desk
- * scene) fills the viewport with a subtle mouse-parallax drift. The open
- * book on the desk is a precisely-mapped clickable hotspot — precise
- * because the image is shown with object-fit: cover, which crops
- * differently depending on viewport aspect ratio, so the hotspot's pixel
- * position is recomputed from the actual rendered crop on every resize
- * rather than hard-coded as a fixed percentage.
+ * Illustrated 2D room intro, staged to read as 3D:
+ * - the whole scene tilts in perspective toward the cursor (rotateX/rotateY),
+ *   which sells depth far better than flat translation alone
+ * - a slow idle sway keeps it alive even with no pointer input
+ * - drifting light-dust particles add a layer of motion on top of the flat art
+ * - a precisely-mapped clickable hotspot sits over the open journal, recomputed
+ *   on resize since object-fit: cover crops differently per aspect ratio
  */
 
 const IMAGE_SRC = "/room-scene.png";
@@ -15,9 +15,16 @@ const IMAGE_NATURAL_WIDTH = 2752;
 const IMAGE_NATURAL_HEIGHT = 1536;
 
 // Bounding box of the open book in the ORIGINAL image's pixel coordinates.
-// Re-measure and adjust these four numbers if you swap in a different
-// illustration or the book moves.
 const BOOK_BOX = { left: 1050, top: 950, right: 1850, bottom: 1340 };
+
+const DUST_MOTES = Array.from({ length: 14 }, (_, i) => ({
+  id: i,
+  left: 4 + Math.random() * 34, // cluster loosely near the window, left third
+  top: 8 + Math.random() * 55,
+  size: 2 + Math.random() * 4,
+  duration: 9 + Math.random() * 10,
+  delay: -Math.random() * 12,
+}));
 
 function useCoverMapping(
   containerRef: React.RefObject<HTMLDivElement | null>,
@@ -43,14 +50,10 @@ function useCoverMapping(
       let cropY = 0;
 
       if (containerAspect > imageAspect) {
-        // Container relatively wider -> image scaled to container width,
-        // top/bottom get cropped.
         scale = cw / naturalWidth;
         const visibleHeightSrc = ch / scale;
         cropY = (naturalHeight - visibleHeightSrc) / 2;
       } else {
-        // Container relatively taller/narrower -> image scaled to
-        // container height, left/right get cropped.
         scale = ch / naturalHeight;
         const visibleWidthSrc = cw / scale;
         cropX = (naturalWidth - visibleWidthSrc) / 2;
@@ -81,24 +84,38 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const parallaxRef = useRef<HTMLDivElement>(null);
-  const pointer = useRef({ x: 0, y: 0 });
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const pointer = useRef({ x: 0, y: 0 }); // normalized -1..1, smoothed target
+  const current = useRef({ rx: 0, ry: 0, tx: 0, ty: 0 });
   const rafRef = useRef<number>(undefined);
+  const startTime = useRef(performance.now());
 
   const bookRect = useCoverMapping(containerRef, IMAGE_NATURAL_WIDTH, IMAGE_NATURAL_HEIGHT);
+  const dustMotes = useMemo(() => DUST_MOTES, []);
 
   useEffect(() => {
-    const loop = () => {
-      if (parallaxRef.current) {
-        const targetX = pointer.current.x * 14;
-        const targetY = pointer.current.y * 8;
-        const current = parallaxRef.current.style.transform;
-        const match = /translate3d\(([-\d.]+)px, ([-\d.]+)px/.exec(current);
-        const cx = match ? parseFloat(match[1] ?? "0") : 0;
-        const cy = match ? parseFloat(match[2] ?? "0") : 0;
-        const nx = cx + (targetX - cx) * 0.06;
-        const ny = cy + (targetY - cy) * 0.06;
-        parallaxRef.current.style.transform = `translate3d(${nx}px, ${ny}px, 0) scale(1.03)`;
+    const loop = (t: number) => {
+      const elapsed = (t - startTime.current) / 1000;
+
+      // gentle idle sway, always running
+      const idleRy = Math.sin(elapsed * (2 * Math.PI) / 7) * 1.4;
+      const idleRx = Math.sin(elapsed * (2 * Math.PI) / 9 + 1) * 0.7;
+
+      const targetRy = idleRy + pointer.current.x * 4.5;
+      const targetRx = idleRx - pointer.current.y * 2.6;
+      const targetTx = pointer.current.x * 10;
+      const targetTy = pointer.current.y * 6;
+
+      const c = current.current;
+      c.ry += (targetRy - c.ry) * 0.045;
+      c.rx += (targetRx - c.rx) * 0.045;
+      c.tx += (targetTx - c.tx) * 0.06;
+      c.ty += (targetTy - c.ty) * 0.06;
+
+      if (tiltRef.current) {
+        tiltRef.current.style.transform =
+          `perspective(1400px) rotateX(${c.rx}deg) rotateY(${c.ry}deg) ` +
+          `translate3d(${c.tx}px, ${c.ty}px, 0) scale(1.08)`;
       }
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -138,25 +155,69 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
       }}
     >
       <div
-        ref={parallaxRef}
-        className="absolute inset-[-3%]"
+        ref={tiltRef}
+        className="absolute inset-0"
         style={{
-          transform: "translate3d(0px, 0px, 0) scale(1.03)",
-          transition: "filter 700ms ease, opacity 500ms ease",
+          transformStyle: "preserve-3d",
+          transition: "filter 700ms ease",
           filter: phase === "opening" ? "blur(2px) brightness(1.1)" : "none",
+          willChange: "transform",
         }}
       >
-        {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative scene, described via aria-hidden */}
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative scene */}
         <img
           src={IMAGE_SRC}
           aria-hidden
           onLoad={() => setImgLoaded(true)}
           className="h-full w-full object-cover"
-          style={{
-            opacity: imgLoaded ? 1 : 0,
-            transition: "opacity 900ms ease",
-          }}
+          style={{ opacity: imgLoaded ? 1 : 0, transition: "opacity 900ms ease" }}
         />
+
+        {/* drifting light dust, on top of the image, inside the same tilted layer */}
+        {imgLoaded &&
+          dustMotes.map((d) => (
+            <span
+              key={d.id}
+              aria-hidden
+              className="absolute rounded-full"
+              style={{
+                left: `${d.left}%`,
+                top: `${d.top}%`,
+                width: d.size,
+                height: d.size,
+                background: "radial-gradient(circle, rgba(240,223,160,0.9), rgba(240,223,160,0) 70%)",
+                animation: `dust-drift ${d.duration}s ease-in-out ${d.delay}s infinite`,
+              }}
+            />
+          ))}
+
+        {/* click hotspot over the open book, tilts together with the image */}
+        {bookRect && (
+          <button
+            type="button"
+            onClick={handleOpen}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            aria-label="Open the portfolio"
+            className="absolute cursor-pointer border-0 bg-transparent p-0"
+            style={{
+              left: bookRect.left,
+              top: bookRect.top,
+              width: bookRect.width,
+              height: bookRect.height,
+            }}
+          >
+            <span
+              aria-hidden
+              className="absolute inset-[-14%] rounded-[40%] transition-opacity duration-300"
+              style={{
+                background:
+                  "radial-gradient(closest-side, rgb(240 223 160 / 0.55), rgb(240 223 160 / 0.15) 60%, transparent 80%)",
+                opacity: hovered && phase === "idle" ? 1 : 0,
+              }}
+            />
+          </button>
+        )}
       </div>
 
       {!imgLoaded && (
@@ -165,53 +226,38 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
         </div>
       )}
 
-      {/* click hotspot over the open book, precisely mapped to the rendered crop */}
-      {bookRect && (
-        <button
-          type="button"
-          onClick={handleOpen}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          aria-label="Open the portfolio"
-          className="absolute cursor-pointer border-0 bg-transparent p-0"
-          style={{
-            left: bookRect.left,
-            top: bookRect.top,
-            width: bookRect.width,
-            height: bookRect.height,
-          }}
-        >
-          <span
-            aria-hidden
-            className="absolute inset-[-14%] rounded-[40%] transition-opacity duration-300"
-            style={{
-              background:
-                "radial-gradient(closest-side, rgb(240 223 160 / 0.55), rgb(240 223 160 / 0.15) 60%, transparent 80%)",
-              opacity: hovered && phase === "idle" ? 1 : 0,
-            }}
-          />
-        </button>
-      )}
-
       {/* cream cross-fade overlay for the click transition */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[#FAF6EC]"
-        style={{
-          opacity: phase === "idle" ? 0 : 1,
-          transition: "opacity 650ms ease",
-        }}
+        style={{ opacity: phase === "idle" ? 0 : 1, transition: "opacity 650ms ease" }}
       />
 
-      <p
-        className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-[0.72rem] uppercase tracking-[0.2em] text-[#3A342C]"
+      <div
+        className="pointer-events-none absolute bottom-7 left-1/2 -translate-x-1/2 rounded-full border px-4 py-1.5"
         style={{
-          opacity: phase === "idle" && imgLoaded ? (hovered ? 1 : 0.75) : 0,
-          transition: "opacity 400ms ease",
+          borderColor: "rgba(17,17,17,0.25)",
+          background: "rgba(250,246,236,0.88)",
+          backdropFilter: "blur(4px)",
+          opacity: phase === "idle" && imgLoaded ? 1 : 0,
+          transform: `translateX(-50%) translateY(${phase === "idle" && imgLoaded ? 0 : 6}px) scale(${hovered ? 1.04 : 1})`,
+          transition: "opacity 500ms ease, transform 300ms ease",
         }}
       >
-        click the journal to enter
-      </p>
+        <p className="text-[0.72rem] uppercase tracking-[0.2em] text-[#111111]">
+          click the journal to enter
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes dust-drift {
+          0%   { transform: translate(0, 0); opacity: 0; }
+          15%  { opacity: 0.8; }
+          50%  { transform: translate(6px, -22px); opacity: 0.5; }
+          85%  { opacity: 0.7; }
+          100% { transform: translate(-4px, -40px); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
