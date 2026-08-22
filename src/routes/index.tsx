@@ -383,59 +383,55 @@ function DenoisingPortrait({ progress }: { progress: number }) {
   );
 }
 
-function AuthorFigure() {
-  const progress = useScrollProgress(750);
+function AuthorFigureDesktop({ progress }: { progress: number }) {
   const timestep = Math.round((1 - progress) * 1000);
   return (
-    <div className="mt-10 lg:mt-0">
-      {/* Desktop: figure with leader-line callouts */}
-      <div className="relative mx-auto hidden max-w-md lg:block">
-        <figure className="w-[64%]">
-          <DenoisingPortrait progress={progress} />
-          <figcaption className="mt-2 text-center text-[0.82rem]">
-            <span className="font-bold">Figure 0:</span> The Author.
-            {progress < 0.97 && (
-              <span className="ml-1 text-[0.72rem] italic text-muted-foreground">(t = {timestep})</span>
-            )}
-          </figcaption>
-        </figure>
+    <div className="relative mx-auto hidden max-w-md lg:block">
+      <figure className="w-[64%]">
+        <DenoisingPortrait progress={progress} />
+        <figcaption className="mt-2 text-center text-[0.82rem]">
+          <span className="font-bold">Figure 0:</span> The Author.
+          {progress < 0.97 && (
+            <span className="ml-1 text-[0.72rem] italic text-muted-foreground">(t = {timestep})</span>
+          )}
+        </figcaption>
+      </figure>
 
-        {STATS.map((s) => (
-          <div
-            key={s.value}
-            className="absolute flex items-center"
-            style={{ left: "64%", top: s.top, right: 0 }}
-          >
-            <span className="h-[5px] w-[5px] shrink-0 -translate-x-[3px] rounded-full bg-ink" />
-            <span className="h-px w-6 shrink-0 bg-ink" />
-            <span className={`ml-2 text-[0.72rem] leading-[1.35] ${s.highlight ? "marker" : ""}`}>
-              <span className="font-bold">{s.value}</span> — {s.label}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Mobile / tablet: centered figure with stat chips */}
-      <div className="lg:hidden">
-        <figure className="mx-auto max-w-sm">
-          <DenoisingPortrait progress={progress} />
-          <figcaption className="mt-2 text-center text-[0.82rem]">
-            <span className="font-bold">Figure 0:</span> The Author.
-            {progress < 0.97 && (
-              <span className="ml-1 text-[0.72rem] italic text-muted-foreground">(t = {timestep})</span>
-            )}
-          </figcaption>
-        </figure>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          {STATS.map((s) => (
-            <span
-              key={s.value}
-              className={`border border-ink px-2 py-1 text-[0.72rem] ${s.highlight ? "bg-marker" : "bg-paper"}`}
-            >
-              <span className="font-bold">{s.value}</span> — {s.label}
-            </span>
-          ))}
+      {STATS.map((s) => (
+        <div key={s.value} className="absolute flex items-center" style={{ left: "64%", top: s.top, right: 0 }}>
+          <span className="h-[5px] w-[5px] shrink-0 -translate-x-[3px] rounded-full bg-ink" />
+          <span className="h-px w-6 shrink-0 bg-ink" />
+          <span className={`ml-2 text-[0.72rem] leading-[1.35] ${s.highlight ? "marker" : ""}`}>
+            <span className="font-bold">{s.value}</span> — {s.label}
+          </span>
         </div>
+      ))}
+    </div>
+  );
+}
+
+function AuthorFigureMobile({ progress }: { progress: number }) {
+  const timestep = Math.round((1 - progress) * 1000);
+  return (
+    <div className="mt-10 lg:hidden">
+      <figure className="mx-auto max-w-sm">
+        <DenoisingPortrait progress={progress} />
+        <figcaption className="mt-2 text-center text-[0.82rem]">
+          <span className="font-bold">Figure 0:</span> The Author.
+          {progress < 0.97 && (
+            <span className="ml-1 text-[0.72rem] italic text-muted-foreground">(t = {timestep})</span>
+          )}
+        </figcaption>
+      </figure>
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        {STATS.map((s) => (
+          <span
+            key={s.value}
+            className={`border border-ink px-2 py-1 text-[0.72rem] ${s.highlight ? "bg-marker" : "bg-paper"}`}
+          >
+            <span className="font-bold">{s.value}</span> — {s.label}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -443,6 +439,7 @@ function AuthorFigure() {
 
 function Index() {
   const [copied, setCopied] = useState(false);
+  const authorProgress = useScrollProgress(750);
 
   const copy = async () => {
     try {
@@ -463,104 +460,111 @@ function Index() {
         <div className="px-5 pb-16 pt-8 sm:px-14">
           {/* Title block */}
           <Reveal id="home" className="reveal">
-            <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[3fr_2fr] lg:gap-10">
-              <div>
-                <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight sm:text-[2.6rem]">
-                  A Portfolio of Krishna Mudgal:
-                  <br />A Research Perspective
-                </h1>
-                <p className="mt-5 text-center text-sm uppercase tracking-[0.22em]">Krishna Mudgal</p>
-                <p className="mt-2 text-center text-[0.86rem] italic">
-                  New Delhi, India · <a className="underline" href="tel:+919650317583">+91-96503-17583</a> ·{" "}
-                  <a className="underline" href="mailto:mudgalkrishna92@gmail.com">mudgalkrishna92@gmail.com</a> ·{" "}
-                  <a className="underline" href="https://linkedin.com/in/krishnamudgal" target="_blank" rel="noreferrer">
-                    linkedin.com/in/krishnamudgal
-                  </a>{" "}
-                  ·{" "}
-                  <a className="underline" href="https://github.com/krishnamudgal" target="_blank" rel="noreferrer">
-                    github.com/krishnamudgal
-                  </a>
-                </p>
-                <div className="mx-auto mt-5 h-[2px] w-full bg-marker-strong" />
-
-                <div className="mx-auto mt-7 max-w-3xl">
-                  <h2 className="text-center text-[0.9rem] font-bold uppercase tracking-[0.2em]">Abstract</h2>
-                  <p className="justify-paper mt-2 text-[0.95rem] leading-[1.55]">
-                    AI &amp; ML developer with a focus on deep learning, sequence modeling, and generative AI. This
-                    portfolio presents a candidate research profile centered on building systems from first principles and
-                    understanding why they work — spanning memory-augmented architectures, graph neural networks for
-                    genomics, and reproducibility studies in deep learning. Interested in how models learn, adapt, and
-                    generalize, especially in settings where data is sparse or the problem is genuinely novel.
-                  </p>
-                  <p className="mt-4 text-[0.9rem] leading-[2.1]">
-                    <span className="font-bold">Keywords:</span>{" "}
-                    {["deep learning", "sequence modeling", "generative AI", "graph neural networks", "reproducibility research"].map(
-                      (k) => (
-                        <span key={k} className="marker mr-2 whitespace-nowrap">
-                          {k}
-                        </span>
-                      ),
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <AuthorFigure />
-            </div>
+            <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight sm:text-[2.6rem]">
+              A Portfolio of Krishna Mudgal:
+              <br />A Research Perspective
+            </h1>
+            <p className="mt-5 text-center text-sm uppercase tracking-[0.22em]">Krishna Mudgal</p>
+            <p className="mt-2 text-center text-[0.86rem] italic">
+              New Delhi, India · <a className="underline" href="tel:+919650317583">+91-96503-17583</a> ·{" "}
+              <a className="underline" href="mailto:mudgalkrishna92@gmail.com">mudgalkrishna92@gmail.com</a> ·{" "}
+              <a className="underline" href="https://linkedin.com/in/krishnamudgal" target="_blank" rel="noreferrer">
+                linkedin.com/in/krishnamudgal
+              </a>{" "}
+              ·{" "}
+              <a className="underline" href="https://github.com/krishnamudgal" target="_blank" rel="noreferrer">
+                github.com/krishnamudgal
+              </a>
+            </p>
+            <div className="mx-auto mt-5 h-[2px] w-full bg-marker-strong" />
           </Reveal>
 
-          {/* Two-column body */}
-          <div className="mt-12 sm:[column-count:2] sm:[column-gap:2.6rem]">
-            <Reveal as="div" className="reveal break-inside-avoid">
-              <SectionHeading>2 Education</SectionHeading>
-              <p className="justify-paper text-[0.95rem]">
-                <span className="font-bold">Maharaja Agrasen Institute of Technology (MAIT), GGSIPU</span> — New Delhi,
-                India. <span className="italic">B.Tech in Computer Science &amp; Technology | CGPA: 9.0</span> — 2024–2028.
-              </p>
-            </Reveal>
+          {/* Abstract + Education + Experience sit in the left column; the
+              portrait sticks in the right column for this whole span on
+              desktop, so it stays visible while this section scrolls. */}
+          <div className="mt-7 grid grid-cols-1 gap-10 lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-10">
+            <div>
+              <div className="mx-auto max-w-3xl">
+                <h2 className="text-center text-[0.9rem] font-bold uppercase tracking-[0.2em]">Abstract</h2>
+                <p className="justify-paper mt-2 text-[0.95rem] leading-[1.55]">
+                  AI &amp; ML developer with a focus on deep learning, sequence modeling, and generative AI. This
+                  portfolio presents a candidate research profile centered on building systems from first principles and
+                  understanding why they work — spanning memory-augmented architectures, graph neural networks for
+                  genomics, and reproducibility studies in deep learning. Interested in how models learn, adapt, and
+                  generalize, especially in settings where data is sparse or the problem is genuinely novel.
+                </p>
+                <p className="mt-4 text-[0.9rem] leading-[2.1]">
+                  <span className="font-bold">Keywords:</span>{" "}
+                  {["deep learning", "sequence modeling", "generative AI", "graph neural networks", "reproducibility research"].map(
+                    (k) => (
+                      <span key={k} className="marker mr-2 whitespace-nowrap">
+                        {k}
+                      </span>
+                    ),
+                  )}
+                </p>
+              </div>
 
-            <Reveal as="div" id="experience" className="reveal mt-8 break-inside-avoid">
-              <SectionHeading>3 Experience</SectionHeading>
+              <AuthorFigureMobile progress={authorProgress} />
 
-              {[
-                {
-                  head: "MindoraxAI Labs — Remote — AI Intern",
-                  date: "2026",
-                  items: [
-                    "Worked on a research-focused reproduction effort, replicating the methodology and core experiments of a published deep learning paper end-to-end in PyTorch.",
-                    "Validated reproduced results against reported benchmarks and ran ablations to test sensitivity of findings to architectural and training choices.",
-                  ],
-                },
-                {
-                  head: "RL Hackathon, IIT Delhi",
-                  date: "2024",
-                  items: [
-                    "Applied reinforcement learning to a sequential decision-making problem; demonstrated strong grasp of policy optimization and reward shaping.",
-                  ],
-                },
-                {
-                  head: "HackLLM, IIIT Delhi",
-                  date: "2024–2025",
-                  items: [
-                    "Built an LLM hallucination detection pipeline using RAG-based verification with Mistral-7B and DeBERTa; Top 50 of 110 teams.",
-                  ],
-                },
-              ].map((r) => (
-                <div key={r.head} className="mb-4 break-inside-avoid">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="text-[0.95rem] font-bold">{r.head}</h3>
-                    <span className="shrink-0 text-[0.85rem] italic">{r.date}</span>
-                  </div>
-                  <ul className="mt-1 space-y-1">
-                    {r.items.map((i) => (
-                      <li key={i} className="justify-paper pl-4 -indent-4 text-[0.92rem] leading-[1.5]">
-                        — {i}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </Reveal>
+              {/* Two-column body */}
+              <div className="mt-12 sm:[column-count:2] sm:[column-gap:2.6rem]">
+                <Reveal as="div" className="reveal break-inside-avoid">
+                  <SectionHeading>2 Education</SectionHeading>
+                  <p className="justify-paper text-[0.95rem]">
+                    <span className="font-bold">Maharaja Agrasen Institute of Technology (MAIT), GGSIPU</span> — New Delhi,
+                    India. <span className="italic">B.Tech in Computer Science &amp; Technology | CGPA: 9.0</span> — 2024–2028.
+                  </p>
+                </Reveal>
+
+                <Reveal as="div" id="experience" className="reveal mt-8 break-inside-avoid">
+                  <SectionHeading>3 Experience</SectionHeading>
+
+                  {[
+                    {
+                      head: "MindoraxAI Labs — Remote — AI Intern",
+                      date: "2026",
+                      items: [
+                        "Worked on a research-focused reproduction effort, replicating the methodology and core experiments of a published deep learning paper end-to-end in PyTorch.",
+                        "Validated reproduced results against reported benchmarks and ran ablations to test sensitivity of findings to architectural and training choices.",
+                      ],
+                    },
+                    {
+                      head: "RL Hackathon, IIT Delhi",
+                      date: "2024",
+                      items: [
+                        "Applied reinforcement learning to a sequential decision-making problem; demonstrated strong grasp of policy optimization and reward shaping.",
+                      ],
+                    },
+                    {
+                      head: "HackLLM, IIIT Delhi",
+                      date: "2024–2025",
+                      items: [
+                        "Built an LLM hallucination detection pipeline using RAG-based verification with Mistral-7B and DeBERTa; Top 50 of 110 teams.",
+                      ],
+                    },
+                  ].map((r) => (
+                    <div key={r.head} className="mb-4 break-inside-avoid">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="text-[0.95rem] font-bold">{r.head}</h3>
+                        <span className="shrink-0 text-[0.85rem] italic">{r.date}</span>
+                      </div>
+                      <ul className="mt-1 space-y-1">
+                        {r.items.map((i) => (
+                          <li key={i} className="justify-paper pl-4 -indent-4 text-[0.92rem] leading-[1.5]">
+                            — {i}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </Reveal>
+              </div>
+            </div>
+
+            <div className="hidden lg:sticky lg:top-24 lg:block">
+              <AuthorFigureDesktop progress={authorProgress} />
+            </div>
           </div>
 
           {/* Projects */}
