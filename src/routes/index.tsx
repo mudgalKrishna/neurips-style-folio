@@ -116,10 +116,14 @@ function Nav() {
   );
 }
 
-function useScrollProgress() {
+function useScrollProgress(distancePx?: number) {
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     const onScroll = () => {
+      if (distancePx) {
+        setProgress(Math.min(1, Math.max(0, window.scrollY / distancePx)));
+        return;
+      }
       const doc = document.documentElement;
       const max = doc.scrollHeight - doc.clientHeight;
       setProgress(max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0);
@@ -131,7 +135,7 @@ function useScrollProgress() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, []);
+  }, [distancePx]);
   return progress;
 }
 
@@ -220,16 +224,19 @@ function AttentionLines() {
 
   if (!cursor || targets.length === 0) return null;
 
-  const RADIUS = 480;
+  // Short, local radius only — this should feel like the page noticing
+  // something right next to the cursor, never a line stretching across
+  // the whole viewport.
+  const RADIUS = 170;
   const nearby = targets
     .map((t) => {
       const dx = t.cx - cursor.x;
       const dy = t.cy - cursor.y;
-      return { ...t, dist: Math.sqrt(dx * dx + dy * dy) };
+      return { ...t, dist: Math.sqrt(dx * dx + dy * dy), dx, dy };
     })
-    .filter((t) => t.dist < RADIUS)
+    .filter((t) => t.dist < RADIUS && t.dist > 6)
     .sort((a, b) => a.dist - b.dist)
-    .slice(0, 3);
+    .slice(0, 2);
 
   if (nearby.length === 0) return null;
 
@@ -237,20 +244,30 @@ function AttentionLines() {
     <svg className="pointer-events-none fixed inset-0 z-30 hidden h-full w-full lg:block" aria-hidden="true">
       {nearby.map((t, i) => {
         const closeness = 1 - t.dist / RADIUS;
-        const opacity = 0.35 + 0.55 * closeness;
-        const mx = (cursor.x + t.cx) / 2;
-        const my = (cursor.y + t.cy) / 2 - 24;
-        const d = `M ${cursor.x} ${cursor.y} Q ${mx} ${my} ${t.cx} ${t.cy}`;
+        const opacity = 0.3 + 0.45 * closeness;
+        // Perpendicular bow so the connector reads as a soft arc rather
+        // than a straight taut thread.
+        const px = -t.dy / t.dist;
+        const py = t.dx / t.dist;
+        const bow = t.dist * 0.18;
+        const mx = (cursor.x + t.cx) / 2 + px * bow;
+        const my = (cursor.y + t.cy) / 2 + py * bow;
         return (
-          <g key={i} style={{ opacity }}>
-            <path d={d} fill="none" stroke="var(--ink)" strokeOpacity="0.25" strokeWidth="3" />
-            <path d={d} fill="none" stroke="#C9A227" strokeWidth="1.6" />
-          </g>
+          <path
+            key={i}
+            d={`M ${cursor.x} ${cursor.y} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${t.cx} ${t.cy}`}
+            fill="none"
+            stroke="#C9A227"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            style={{ opacity }}
+          />
         );
       })}
     </svg>
   );
 }
+
 function FigurePlot({ variant }: { variant: number }) {
   return (
     <div className="flex h-40 w-full items-center justify-center border border-ink/40 bg-[#EFEADC]">
@@ -367,7 +384,7 @@ function DenoisingPortrait({ progress }: { progress: number }) {
 }
 
 function AuthorFigure() {
-  const progress = useScrollProgress();
+  const progress = useScrollProgress(750);
   const timestep = Math.round((1 - progress) * 1000);
   return (
     <div className="mt-10 lg:mt-0">
