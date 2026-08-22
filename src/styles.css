@@ -62,25 +62,30 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
+  --radius: 0;
+  --paper: #FAF6EC;
+  --desk: #3A342C;
+  --ink: #111111;
+  --marker: #F0DFA0;
+  --marker-strong: #E8CE7A;
+  --background: #FAF6EC;
+  --foreground: #111111;
+  --card: #FAF6EC;
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
+  --primary: #111111;
+  --primary-foreground: #FAF6EC;
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
+  --muted-foreground: #6b6559;
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
+  --border: #111111;
+  --input: #111111;
   --ring: oklch(0.704 0.04 256.788);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -141,4 +146,87 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-desk: var(--desk);
+  --color-ink: var(--ink);
+  --color-marker: var(--marker);
+  --color-marker-strong: var(--marker-strong);
+  --font-serif-paper: "EB Garamond", Georgia, "Times New Roman", serif;
+  --font-mono-paper: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    background-color: var(--desk);
+    color: var(--ink);
+    font-family: var(--font-serif-paper);
+    font-size: 17px;
+    line-height: 1.5;
+  }
+}
+
+@utility paper-sheet {
+  background-color: var(--paper);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+}
+
+@utility justify-paper {
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+}
+
+@utility paper-tab {
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  box-shadow: 1px 1px 0 rgb(17 17 17 / 0.18);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+}
+
+@utility marker {
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--marker) 92%, transparent),
+    var(--marker) 25%,
+    var(--marker) 78%,
+    color-mix(in srgb, var(--marker) 88%, transparent)
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 78%;
+  background-position: 0 62%;
+  border-radius: 0.35rem 0.6rem 0.4rem 0.7rem / 0.7rem 0.35rem 0.6rem 0.4rem;
+  padding: 0 0.22em;
+  box-decoration-break: clone;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+
+.peel-card .peel-corner {
+  transition: all 350ms ease-out;
+}
+.peel-card:hover .peel-corner {
+  width: 92px;
+  height: 92px;
+}
+.peel-card:hover .peel-shadow {
+  opacity: 0.4;
+  transform: translate(-14px, 14px) rotate(-6deg);
 }
