@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import portrait from "@/assets/author-portrait.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -198,6 +199,76 @@ const FIGURES = [
   },
 ];
 
+const STATS = [
+  { value: "83%", label: "AMR prediction accuracy", top: "16%", highlight: false },
+  { value: "4", label: "architectures reproduced from scratch", top: "46%", highlight: true },
+  { value: "Top 50/110", label: "HackLLM ranking", top: "76%", highlight: false },
+];
+
+function AuthorFigure() {
+  return (
+    <div className="mt-10 lg:mt-0">
+      {/* Desktop: figure with leader-line callouts */}
+      <div className="relative mx-auto hidden max-w-md lg:block">
+        <figure className="w-[64%]">
+          <div className="border border-ink bg-paper p-2">
+            <img
+              src={portrait.url}
+              alt="Illustrated portrait of Krishna Mudgal in retro scientific-illustration style"
+              className="block w-full"
+              loading="lazy"
+            />
+          </div>
+          <figcaption className="mt-2 text-center text-[0.82rem]">
+            <span className="font-bold">Figure 0:</span> The Author.
+          </figcaption>
+        </figure>
+
+        {STATS.map((s) => (
+          <div
+            key={s.value}
+            className="absolute flex items-center"
+            style={{ left: "64%", top: s.top, right: 0 }}
+          >
+            <span className="h-[5px] w-[5px] shrink-0 -translate-x-[3px] rounded-full bg-ink" />
+            <span className="h-px w-6 shrink-0 bg-ink" />
+            <span className={`ml-2 text-[0.72rem] leading-[1.35] ${s.highlight ? "marker" : ""}`}>
+              <span className="font-bold">{s.value}</span> — {s.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile / tablet: centered figure with stat chips */}
+      <div className="lg:hidden">
+        <figure className="mx-auto max-w-sm">
+          <div className="border border-ink bg-paper p-2">
+            <img
+              src={portrait.url}
+              alt="Illustrated portrait of Krishna Mudgal in retro scientific-illustration style"
+              className="block w-full"
+              loading="lazy"
+            />
+          </div>
+          <figcaption className="mt-2 text-center text-[0.82rem]">
+            <span className="font-bold">Figure 0:</span> The Author.
+          </figcaption>
+        </figure>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {STATS.map((s) => (
+            <span
+              key={s.value}
+              className={`border border-ink px-2 py-1 text-[0.72rem] ${s.highlight ? "bg-marker" : "bg-paper"}`}
+            >
+              <span className="font-bold">{s.value}</span> — {s.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Index() {
   const [copied, setCopied] = useState(false);
 
@@ -219,43 +290,49 @@ function Index() {
         <div className="px-5 pb-16 pt-8 sm:px-14">
           {/* Title block */}
           <Reveal id="home" className="reveal">
-            <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight sm:text-[2.6rem]">
-              A Portfolio of Krishna Mudgal:
-              <br />A Research Perspective
-            </h1>
-            <p className="mt-5 text-center text-sm uppercase tracking-[0.22em]">Krishna Mudgal</p>
-            <p className="mt-2 text-center text-[0.86rem] italic">
-              New Delhi, India · <a className="underline" href="tel:+919650317583">+91-96503-17583</a> ·{" "}
-              <a className="underline" href="mailto:mudgalkrishna92@gmail.com">mudgalkrishna92@gmail.com</a> ·{" "}
-              <a className="underline" href="https://linkedin.com/in/krishnamudgal" target="_blank" rel="noreferrer">
-                linkedin.com/in/krishnamudgal
-              </a>{" "}
-              ·{" "}
-              <a className="underline" href="https://github.com/krishnamudgal" target="_blank" rel="noreferrer">
-                github.com/krishnamudgal
-              </a>
-            </p>
-            <div className="mx-auto mt-5 h-[2px] w-full bg-marker-strong" />
+            <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[3fr_2fr] lg:gap-10">
+              <div>
+                <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight sm:text-[2.6rem]">
+                  A Portfolio of Krishna Mudgal:
+                  <br />A Research Perspective
+                </h1>
+                <p className="mt-5 text-center text-sm uppercase tracking-[0.22em]">Krishna Mudgal</p>
+                <p className="mt-2 text-center text-[0.86rem] italic">
+                  New Delhi, India · <a className="underline" href="tel:+919650317583">+91-96503-17583</a> ·{" "}
+                  <a className="underline" href="mailto:mudgalkrishna92@gmail.com">mudgalkrishna92@gmail.com</a> ·{" "}
+                  <a className="underline" href="https://linkedin.com/in/krishnamudgal" target="_blank" rel="noreferrer">
+                    linkedin.com/in/krishnamudgal
+                  </a>{" "}
+                  ·{" "}
+                  <a className="underline" href="https://github.com/krishnamudgal" target="_blank" rel="noreferrer">
+                    github.com/krishnamudgal
+                  </a>
+                </p>
+                <div className="mx-auto mt-5 h-[2px] w-full bg-marker-strong" />
 
-            <div className="mx-auto mt-7 max-w-3xl px-2 sm:px-12">
-              <h2 className="text-center text-[0.9rem] font-bold uppercase tracking-[0.2em]">Abstract</h2>
-              <p className="justify-paper mt-2 text-[0.95rem] leading-[1.55]">
-                AI &amp; ML developer with a focus on deep learning, sequence modeling, and generative AI. This
-                portfolio presents a candidate research profile centered on building systems from first principles and
-                understanding why they work — spanning memory-augmented architectures, graph neural networks for
-                genomics, and reproducibility studies in deep learning. Interested in how models learn, adapt, and
-                generalize, especially in settings where data is sparse or the problem is genuinely novel.
-              </p>
-              <p className="mt-4 text-[0.9rem] leading-[2.1]">
-                <span className="font-bold">Keywords:</span>{" "}
-                {["deep learning", "sequence modeling", "generative AI", "graph neural networks", "reproducibility research"].map(
-                  (k) => (
-                    <span key={k} className="marker mr-2 whitespace-nowrap">
-                      {k}
-                    </span>
-                  ),
-                )}
-              </p>
+                <div className="mx-auto mt-7 max-w-3xl">
+                  <h2 className="text-center text-[0.9rem] font-bold uppercase tracking-[0.2em]">Abstract</h2>
+                  <p className="justify-paper mt-2 text-[0.95rem] leading-[1.55]">
+                    AI &amp; ML developer with a focus on deep learning, sequence modeling, and generative AI. This
+                    portfolio presents a candidate research profile centered on building systems from first principles and
+                    understanding why they work — spanning memory-augmented architectures, graph neural networks for
+                    genomics, and reproducibility studies in deep learning. Interested in how models learn, adapt, and
+                    generalize, especially in settings where data is sparse or the problem is genuinely novel.
+                  </p>
+                  <p className="mt-4 text-[0.9rem] leading-[2.1]">
+                    <span className="font-bold">Keywords:</span>{" "}
+                    {["deep learning", "sequence modeling", "generative AI", "graph neural networks", "reproducibility research"].map(
+                      (k) => (
+                        <span key={k} className="marker mr-2 whitespace-nowrap">
+                          {k}
+                        </span>
+                      ),
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <AuthorFigure />
             </div>
           </Reveal>
 
