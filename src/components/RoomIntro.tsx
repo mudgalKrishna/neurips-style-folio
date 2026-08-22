@@ -1,232 +1,119 @@
-import { Suspense, useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import * as THREE from "three";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * A minimal, hand-built 3D room: a desk, a window with directional light,
- * and a "book" (the portfolio) resting on the desk. Clicking the book
- * dollies the camera in and cross-fades to the real paper-styled site.
- *
- * Kept deliberately primitive-only (no external models/textures) so it
- * stays small and has nothing that can fail to load.
+ * Illustrated 2D room intro. A single background illustration (the desk
+ * scene) fills the viewport with a subtle mouse-parallax drift. The open
+ * book on the desk is a precisely-mapped clickable hotspot — precise
+ * because the image is shown with object-fit: cover, which crops
+ * differently depending on viewport aspect ratio, so the hotspot's pixel
+ * position is recomputed from the actual rendered crop on every resize
+ * rather than hard-coded as a fixed percentage.
  */
 
-const PAPER = "#FAF6EC";
-const DESK = "#3A342C";
-const DESK_LIGHT = "#4A4230";
-const INK = "#111111";
-const MARKER = "#F0DFA0";
-const MARKER_STRONG = "#E8CE7A";
+const IMAGE_SRC = "/room-scene.png";
+const IMAGE_NATURAL_WIDTH = 2752;
+const IMAGE_NATURAL_HEIGHT = 1536;
 
-function makeCoverTexture() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 700;
-  const ctx = canvas.getContext("2d")!;
+// Bounding box of the open book in the ORIGINAL image's pixel coordinates.
+// Re-measure and adjust these four numbers if you swap in a different
+// illustration or the book moves.
+const BOOK_BOX = { left: 1050, top: 950, right: 1850, bottom: 1340 };
 
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+function useCoverMapping(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  naturalWidth: number,
+  naturalHeight: number,
+) {
+  const [rect, setRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
 
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 6;
-  ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(38, 38, canvas.width - 76, canvas.height - 76);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-  ctx.fillStyle = INK;
-  ctx.textAlign = "center";
-  ctx.font = "italic 22px Georgia, 'EB Garamond', serif";
-  ctx.fillText("A Portfolio of", canvas.width / 2, 260);
+    const compute = () => {
+      const cw = el.clientWidth;
+      const ch = el.clientHeight;
+      if (!cw || !ch) return;
 
-  ctx.font = "bold 34px Georgia, 'EB Garamond', serif";
-  ctx.fillText("Krishna Mudgal", canvas.width / 2, 310);
+      const containerAspect = cw / ch;
+      const imageAspect = naturalWidth / naturalHeight;
 
-  ctx.font = "16px Georgia, 'EB Garamond', serif";
-  ctx.fillStyle = "#555";
-  ctx.fillText("A Research Perspective", canvas.width / 2, 345);
+      let scale: number;
+      let cropX = 0;
+      let cropY = 0;
 
-  ctx.font = "13px 'IBM Plex Mono', monospace";
-  ctx.fillStyle = "#8a8272";
-  ctx.fillText("click to open", canvas.width / 2, canvas.height - 60);
+      if (containerAspect > imageAspect) {
+        // Container relatively wider -> image scaled to container width,
+        // top/bottom get cropped.
+        scale = cw / naturalWidth;
+        const visibleHeightSrc = ch / scale;
+        cropY = (naturalHeight - visibleHeightSrc) / 2;
+      } else {
+        // Container relatively taller/narrower -> image scaled to
+        // container height, left/right get cropped.
+        scale = ch / naturalHeight;
+        const visibleWidthSrc = cw / scale;
+        cropX = (naturalWidth - visibleWidthSrc) / 2;
+      }
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
+      const toContainer = (sx: number, sy: number) => ({
+        x: (sx - cropX) * scale,
+        y: (sy - cropY) * scale,
+      });
 
-function makeGlowTexture() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d")!;
-  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  grad.addColorStop(0, "rgba(240, 223, 160, 0.85)");
-  grad.addColorStop(0.5, "rgba(240, 223, 160, 0.25)");
-  grad.addColorStop(1, "rgba(240, 223, 160, 0)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 256, 256);
-  return new THREE.CanvasTexture(canvas);
-}
+      const p1 = toContainer(BOOK_BOX.left, BOOK_BOX.top);
+      const p2 = toContainer(BOOK_BOX.right, BOOK_BOX.bottom);
 
-function Book({
-  onOpen,
-  disabled,
-}: {
-  onOpen: () => void;
-  disabled: boolean;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const coverTexture = useMemo(() => makeCoverTexture(), []);
-  const groupRef = useRef<THREE.Group>(null);
+      setRect({ left: p1.x, top: p1.y, width: p2.x - p1.x, height: p2.y - p1.y });
+    };
 
-  useFrame((_, delta) => {
-    if (!groupRef.current) return;
-    const targetLift = hovered && !disabled ? 0.06 : 0;
-    groupRef.current.position.y = THREE.MathUtils.damp(
-      groupRef.current.position.y,
-      targetLift,
-      6,
-      delta,
-    );
-  });
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [containerRef, naturalWidth, naturalHeight]);
 
-  const materials = useMemo(
-    () => [
-      new THREE.MeshStandardMaterial({ color: PAPER, roughness: 0.9 }), // +x pages edge
-      new THREE.MeshStandardMaterial({ color: PAPER, roughness: 0.9 }), // -x
-      new THREE.MeshStandardMaterial({ map: coverTexture, roughness: 0.7 }), // +y cover (visible face)
-      new THREE.MeshStandardMaterial({ color: INK, roughness: 0.8 }), // -y (against desk)
-      new THREE.MeshStandardMaterial({ color: PAPER, roughness: 0.9 }), // +z
-      new THREE.MeshStandardMaterial({ color: PAPER, roughness: 0.9 }), // -z
-    ],
-    [coverTexture],
-  );
-
-  const handleClick = useCallback(
-    (e: ThreeEvent<MouseEvent>) => {
-      e.stopPropagation();
-      if (disabled) return;
-      onOpen();
-    },
-    [disabled, onOpen],
-  );
-
-  return (
-    <group
-      ref={groupRef}
-      position={[0, 0.36, 0.15]}
-      rotation={[0, -0.06, 0]}
-      onClick={handleClick}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        if (!disabled) setHovered(true);
-        document.body.style.cursor = disabled ? "default" : "pointer";
-      }}
-      onPointerOut={() => {
-        setHovered(false);
-        document.body.style.cursor = "default";
-      }}
-    >
-      <mesh castShadow material={materials}>
-        <boxGeometry args={[1.35, 0.16, 1.85]} />
-      </mesh>
-    </group>
-  );
-}
-
-function Scene({
-  onOpenBook,
-  opening,
-  pointer,
-}: {
-  onOpenBook: () => void;
-  opening: boolean;
-  pointer: { current: { x: number; y: number } };
-}) {
-  const glowTexture = useMemo(() => makeGlowTexture(), []);
-  const groupRef = useRef<THREE.Group>(null);
-  const cameraTargetRef = useRef(new THREE.Vector3(0, 1.55, 4.6));
-
-  useFrame(({ camera }, delta) => {
-    if (groupRef.current && !opening) {
-      groupRef.current.rotation.y = THREE.MathUtils.damp(
-        groupRef.current.rotation.y,
-        pointer.current.x * 0.12,
-        3,
-        delta,
-      );
-      groupRef.current.rotation.x = THREE.MathUtils.damp(
-        groupRef.current.rotation.x,
-        pointer.current.y * 0.05,
-        3,
-        delta,
-      );
-    }
-
-    const target = opening
-      ? new THREE.Vector3(0, 1.05, 1.6)
-      : cameraTargetRef.current;
-
-    camera.position.x = THREE.MathUtils.damp(camera.position.x, target.x, opening ? 2.2 : 4, delta);
-    camera.position.y = THREE.MathUtils.damp(camera.position.y, target.y, opening ? 2.2 : 4, delta);
-    camera.position.z = THREE.MathUtils.damp(camera.position.z, target.z, opening ? 2.2 : 4, delta);
-    camera.lookAt(0, 0.4, 0);
-  });
-
-  return (
-    <group ref={groupRef}>
-      <ambientLight intensity={0.55} color={"#5c5346"} />
-      <directionalLight
-        position={[-3.2, 2.6, 1.4]}
-        intensity={1.6}
-        color={MARKER}
-        castShadow
-      />
-      <pointLight position={[0.6, 1.4, 1.8]} intensity={0.25} color={MARKER_STRONG} />
-
-      {/* floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]} receiveShadow>
-        <planeGeometry args={[14, 14]} />
-        <meshStandardMaterial color={DESK} roughness={1} />
-      </mesh>
-
-      {/* back wall */}
-      <mesh position={[0, 3, -2.4]}>
-        <planeGeometry args={[14, 8]} />
-        <meshStandardMaterial color={"#332E26"} roughness={1} />
-      </mesh>
-
-      {/* window frame + glow */}
-      <group position={[-2.6, 3.1, -2.38]}>
-        <mesh>
-          <planeGeometry args={[2.1, 2.7]} />
-          <meshStandardMaterial color={MARKER} emissive={MARKER} emissiveIntensity={1.1} />
-        </mesh>
-        <mesh position={[0, 0, 0.02]}>
-          <planeGeometry args={[2.3, 2.9]} />
-          <meshBasicMaterial map={glowTexture} transparent depthWrite={false} />
-        </mesh>
-      </group>
-
-      {/* desk */}
-      <mesh position={[0, -0.02, 0]} receiveShadow castShadow>
-        <boxGeometry args={[4.4, 0.66, 2.6]} />
-        <meshStandardMaterial color={DESK_LIGHT} roughness={0.7} />
-      </mesh>
-
-      <Book onOpen={onOpenBook} disabled={opening} />
-    </group>
-  );
+  return rect;
 }
 
 export function RoomIntro({ onEnter }: { onEnter: () => void }) {
   const [phase, setPhase] = useState<"idle" | "opening" | "leaving">("idle");
-  const overlayOpacity = phase === "idle" ? 0 : 1;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const parallaxRef = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0 });
+  const rafRef = useRef<number>(undefined);
 
-  const handlePointerMove = useCallback((e: ReactPointerEvent) => {
-    const nx = (e.clientX / window.innerWidth) * 2 - 1;
-    const ny = (e.clientY / window.innerHeight) * 2 - 1;
+  const bookRect = useCoverMapping(containerRef, IMAGE_NATURAL_WIDTH, IMAGE_NATURAL_HEIGHT);
+
+  useEffect(() => {
+    const loop = () => {
+      if (parallaxRef.current) {
+        const targetX = pointer.current.x * 14;
+        const targetY = pointer.current.y * 8;
+        const current = parallaxRef.current.style.transform;
+        const match = /translate3d\(([-\d.]+)px, ([-\d.]+)px/.exec(current);
+        const cx = match ? parseFloat(match[1] ?? "0") : 0;
+        const cy = match ? parseFloat(match[2] ?? "0") : 0;
+        const nx = cx + (targetX - cx) * 0.06;
+        const ny = cy + (targetY - cy) * 0.06;
+        parallaxRef.current.style.transform = `translate3d(${nx}px, ${ny}px, 0) scale(1.03)`;
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
     pointer.current = { x: nx, y: ny };
   }, []);
 
@@ -236,45 +123,94 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
     window.setTimeout(() => {
       onEnter();
       setPhase("leaving");
-    }, 900);
+    }, 750);
   }, [phase, onEnter]);
 
   return (
     <div
-      className="fixed inset-0 z-[60]"
+      ref={containerRef}
+      onPointerMove={handlePointerMove}
+      className="fixed inset-0 z-[60] overflow-hidden bg-[#FAF6EC]"
       style={{
         opacity: phase === "leaving" ? 0 : 1,
-        transition: "opacity 700ms ease",
+        transition: "opacity 650ms ease",
         pointerEvents: phase === "leaving" ? "none" : "auto",
       }}
-      onPointerMove={handlePointerMove}
     >
-      <Canvas
-        shadows
-        camera={{ position: [0, 1.55, 4.6], fov: 42 }}
-        gl={{ antialias: true }}
-        style={{ background: DESK }}
+      <div
+        ref={parallaxRef}
+        className="absolute inset-[-3%]"
+        style={{
+          transform: "translate3d(0px, 0px, 0) scale(1.03)",
+          transition: "filter 700ms ease, opacity 500ms ease",
+          filter: phase === "opening" ? "blur(2px) brightness(1.1)" : "none",
+        }}
       >
-        <Suspense fallback={null}>
-          <Scene onOpenBook={handleOpen} opening={phase !== "idle"} pointer={pointer} />
-        </Suspense>
-      </Canvas>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative scene, described via aria-hidden */}
+        <img
+          src={IMAGE_SRC}
+          aria-hidden
+          onLoad={() => setImgLoaded(true)}
+          className="h-full w-full object-cover"
+          style={{
+            opacity: imgLoaded ? 1 : 0,
+            transition: "opacity 900ms ease",
+          }}
+        />
+      </div>
 
+      {!imgLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#FAF6EC]">
+          <p className="text-sm uppercase tracking-[0.25em] text-[#8a8272]">Krishna Mudgal</p>
+        </div>
+      )}
+
+      {/* click hotspot over the open book, precisely mapped to the rendered crop */}
+      {bookRect && (
+        <button
+          type="button"
+          onClick={handleOpen}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          aria-label="Open the portfolio"
+          className="absolute cursor-pointer border-0 bg-transparent p-0"
+          style={{
+            left: bookRect.left,
+            top: bookRect.top,
+            width: bookRect.width,
+            height: bookRect.height,
+          }}
+        >
+          <span
+            aria-hidden
+            className="absolute inset-[-14%] rounded-[40%] transition-opacity duration-300"
+            style={{
+              background:
+                "radial-gradient(closest-side, rgb(240 223 160 / 0.55), rgb(240 223 160 / 0.15) 60%, transparent 80%)",
+              opacity: hovered && phase === "idle" ? 1 : 0,
+            }}
+          />
+        </button>
+      )}
+
+      {/* cream cross-fade overlay for the click transition */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 bg-[#FAF6EC]"
         style={{
-          background: PAPER,
-          opacity: overlayOpacity,
-          transition: "opacity 700ms ease",
+          opacity: phase === "idle" ? 0 : 1,
+          transition: "opacity 650ms ease",
         }}
       />
 
       <p
-        className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-[0.72rem] uppercase tracking-[0.2em]"
-        style={{ color: MARKER, opacity: phase === "idle" ? 0.85 : 0, transition: "opacity 400ms ease" }}
+        className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-[0.72rem] uppercase tracking-[0.2em] text-[#3A342C]"
+        style={{
+          opacity: phase === "idle" && imgLoaded ? (hovered ? 1 : 0.75) : 0,
+          transition: "opacity 400ms ease",
+        }}
       >
-        click the book to enter
+        click the journal to enter
       </p>
     </div>
   );
