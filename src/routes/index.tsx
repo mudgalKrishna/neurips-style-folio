@@ -161,7 +161,7 @@ function PeelFigure() {
           className="peel-corner pointer-events-none absolute right-0 top-0 h-[70px] w-[70px]"
           style={{
             background:
-              "linear-gradient(225deg, #3A342C 0%, #3A342C 42%, #efe9d8 44%, #FAF6EC 62%, #d8d0ba 100%)",
+              "linear-gradient(225deg, #EDE7D6 0%, #F7F2E3 30%, #FAF6EC 55%, #DCD4BE 80%, #BDB49C 100%)",
             clipPath: "polygon(100% 0, 0 0, 100% 100%)",
             boxShadow: "-6px 6px 10px rgba(0,0,0,0.35)",
           }}
