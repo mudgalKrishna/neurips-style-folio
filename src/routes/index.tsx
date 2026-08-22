@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import portrait from "@/assets/author-portrait.png.asset.json";
+import { RoomIntro } from "@/components/RoomIntro";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -205,7 +206,7 @@ function useAttendTargets() {
 function AttentionLines() {
   const targets = useAttendTargets();
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
-  const frame = useRef<number>();
+  const frame = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -440,6 +441,21 @@ function AuthorFigureMobile({ progress }: { progress: number }) {
 function Index() {
   const [copied, setCopied] = useState(false);
   const authorProgress = useScrollProgress(750);
+  const [mounted, setMounted] = useState(false);
+  const [roomEntered, setRoomEntered] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // Skip the room replay on back-navigation within the same session.
+    if (sessionStorage.getItem("room-entered") === "1") {
+      setRoomEntered(true);
+    }
+  }, []);
+
+  const enterPortfolio = () => {
+    sessionStorage.setItem("room-entered", "1");
+    setRoomEntered(true);
+  };
 
   const copy = async () => {
     try {
@@ -453,11 +469,21 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-desk py-0 sm:py-10">
-      <main className="paper-sheet mx-auto max-w-5xl">
+      {mounted && !roomEntered && <RoomIntro onEnter={enterPortfolio} />}
+
+      <main className="paper-sheet relative mx-auto max-w-5xl">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[420px]"
+          style={{
+            background:
+              "radial-gradient(closest-side at 50% 0%, rgb(240 223 160 / 0.22), rgb(240 223 160 / 0.07) 45%, transparent 75%)",
+          }}
+        />
         <Nav />
         <AttentionLines />
 
-        <div className="px-5 pb-16 pt-8 sm:px-14">
+        <div className="relative z-[1] px-5 pb-16 pt-8 sm:px-14">
           {/* Title block */}
           <Reveal id="home" className="reveal">
             <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight sm:text-[2.6rem]">
