@@ -168,60 +168,6 @@ function NoiseCanvas({ opacity }: { opacity: number }) {
   );
 }
 
-function DiffusionScrollbar() {
-  const progress = useScrollProgress();
-  const noiseAmount = 1 - progress;
-  const blurPx = noiseAmount * 5;
-  const timestep = Math.round(noiseAmount * 1000);
-  const trackHeight = 200;
-
-  const handleTrackClick = (e: any) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const relY = (e.clientY - rect.top) / rect.height;
-    const doc = document.documentElement;
-    const max = doc.scrollHeight - doc.clientHeight;
-    window.scrollTo({ top: Math.max(0, Math.min(max, relY * max)), behavior: "smooth" });
-  };
-
-  return (
-    <div
-      className="fixed right-3 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-center gap-2 lg:flex"
-      aria-hidden="true"
-    >
-      <div className="relative h-16 w-16 overflow-hidden rounded-full border border-ink bg-paper">
-        <img
-          src={portrait.url}
-          alt=""
-          className="h-full w-full object-cover"
-          style={{
-            filter: `blur(${blurPx.toFixed(1)}px) contrast(${(1 + noiseAmount * 0.15).toFixed(2)})`,
-            opacity: 0.35 + progress * 0.65,
-          }}
-        />
-        <NoiseCanvas opacity={noiseAmount} />
-      </div>
-      <div
-        className="whitespace-nowrap border border-ink bg-paper px-1.5 py-0.5 text-[0.62rem]"
-        style={{ fontFamily: "var(--font-mono-paper)" }}
-      >
-        t = {timestep}
-        {progress > 0.97 ? " (denoised)" : ""}
-      </div>
-      <svg width="6" height={trackHeight} onClick={handleTrackClick} className="cursor-pointer">
-        <line x1="3" y1="0" x2="3" y2={trackHeight} stroke="var(--ink)" strokeOpacity="0.18" strokeWidth="2" />
-        <line
-          x1="3"
-          y1="0"
-          x2="3"
-          y2={(trackHeight * progress).toFixed(1)}
-          stroke="var(--marker-strong)"
-          strokeWidth="2"
-        />
-      </svg>
-    </div>
-  );
-}
-
 function useAttendTargets() {
   const [rects, setRects] = useState<{ cx: number; cy: number }[]>([]);
   useEffect(() => {
@@ -290,24 +236,21 @@ function AttentionLines() {
   return (
     <svg className="pointer-events-none fixed inset-0 z-30 hidden h-full w-full lg:block" aria-hidden="true">
       {nearby.map((t, i) => {
-        const opacity = 0.35 * (1 - t.dist / RADIUS);
+        const closeness = 1 - t.dist / RADIUS;
+        const opacity = 0.35 + 0.55 * closeness;
         const mx = (cursor.x + t.cx) / 2;
         const my = (cursor.y + t.cy) / 2 - 24;
+        const d = `M ${cursor.x} ${cursor.y} Q ${mx} ${my} ${t.cx} ${t.cy}`;
         return (
-          <path
-            key={i}
-            d={`M ${cursor.x} ${cursor.y} Q ${mx} ${my} ${t.cx} ${t.cy}`}
-            fill="none"
-            stroke="var(--marker-strong)"
-            strokeWidth="1.2"
-            style={{ opacity }}
-          />
+          <g key={i} style={{ opacity }}>
+            <path d={d} fill="none" stroke="var(--ink)" strokeOpacity="0.25" strokeWidth="3" />
+            <path d={d} fill="none" stroke="#C9A227" strokeWidth="1.6" />
+          </g>
         );
       })}
     </svg>
   );
 }
-
 function FigurePlot({ variant }: { variant: number }) {
   return (
     <div className="flex h-40 w-full items-center justify-center border border-ink/40 bg-[#EFEADC]">
@@ -397,24 +340,46 @@ const STATS = [
   { value: "Top 50/110", label: "HackLLM ranking", top: "76%", highlight: false },
 ];
 
+// The real Figure 0 portrait, blurred + noised at the top of the page and
+// progressively clearing as the visitor scrolls — a live nod to diffusion
+// denoising rather than a separate scrollbar widget.
+function DenoisingPortrait({ progress }: { progress: number }) {
+  const noiseAmount = 1 - progress;
+  const blurPx = noiseAmount * 9;
+  return (
+    <div className="aspect-square w-full overflow-hidden rounded-full border border-ink bg-paper p-2">
+      <div className="relative h-full w-full overflow-hidden rounded-full">
+        <img
+          src={portrait.url}
+          alt="Illustrated portrait of Krishna Mudgal in retro scientific-illustration style"
+          className="h-full w-full object-cover"
+          loading="lazy"
+          style={{
+            filter: `blur(${blurPx.toFixed(1)}px) contrast(${(1 + noiseAmount * 0.18).toFixed(2)})`,
+            opacity: 0.4 + progress * 0.6,
+            transition: "filter 60ms linear, opacity 60ms linear",
+          }}
+        />
+        <NoiseCanvas opacity={noiseAmount} />
+      </div>
+    </div>
+  );
+}
+
 function AuthorFigure() {
+  const progress = useScrollProgress();
+  const timestep = Math.round((1 - progress) * 1000);
   return (
     <div className="mt-10 lg:mt-0">
       {/* Desktop: figure with leader-line callouts */}
       <div className="relative mx-auto hidden max-w-md lg:block">
         <figure className="w-[64%]">
-          <div className="aspect-square w-full overflow-hidden rounded-full border border-ink bg-paper p-2">
-            <div className="h-full w-full overflow-hidden rounded-full">
-              <img
-                src={portrait.url}
-                alt="Illustrated portrait of Krishna Mudgal in retro scientific-illustration style"
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </div>
-          </div>
+          <DenoisingPortrait progress={progress} />
           <figcaption className="mt-2 text-center text-[0.82rem]">
             <span className="font-bold">Figure 0:</span> The Author.
+            {progress < 0.97 && (
+              <span className="ml-1 text-[0.72rem] italic text-muted-foreground">(t = {timestep})</span>
+            )}
           </figcaption>
         </figure>
 
@@ -436,18 +401,12 @@ function AuthorFigure() {
       {/* Mobile / tablet: centered figure with stat chips */}
       <div className="lg:hidden">
         <figure className="mx-auto max-w-sm">
-          <div className="aspect-square w-full overflow-hidden rounded-full border border-ink bg-paper p-2">
-            <div className="h-full w-full overflow-hidden rounded-full">
-              <img
-                src={portrait.url}
-                alt="Illustrated portrait of Krishna Mudgal in retro scientific-illustration style"
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </div>
-          </div>
+          <DenoisingPortrait progress={progress} />
           <figcaption className="mt-2 text-center text-[0.82rem]">
             <span className="font-bold">Figure 0:</span> The Author.
+            {progress < 0.97 && (
+              <span className="ml-1 text-[0.72rem] italic text-muted-foreground">(t = {timestep})</span>
+            )}
           </figcaption>
         </figure>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -482,7 +441,6 @@ function Index() {
     <div className="min-h-screen bg-desk py-0 sm:py-10">
       <main className="paper-sheet mx-auto max-w-5xl">
         <Nav />
-        <DiffusionScrollbar />
         <AttentionLines />
 
         <div className="px-5 pb-16 pt-8 sm:px-14">
