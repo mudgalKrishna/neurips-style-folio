@@ -290,43 +290,49 @@ function Index() {
         <div className="px-5 pb-16 pt-8 sm:px-14">
           {/* Title block */}
           <Reveal id="home" className="reveal">
-            <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight sm:text-[2.6rem]">
-              A Portfolio of Krishna Mudgal:
-              <br />A Research Perspective
-            </h1>
-            <p className="mt-5 text-center text-sm uppercase tracking-[0.22em]">Krishna Mudgal</p>
-            <p className="mt-2 text-center text-[0.86rem] italic">
-              New Delhi, India · <a className="underline" href="tel:+919650317583">+91-96503-17583</a> ·{" "}
-              <a className="underline" href="mailto:mudgalkrishna92@gmail.com">mudgalkrishna92@gmail.com</a> ·{" "}
-              <a className="underline" href="https://linkedin.com/in/krishnamudgal" target="_blank" rel="noreferrer">
-                linkedin.com/in/krishnamudgal
-              </a>{" "}
-              ·{" "}
-              <a className="underline" href="https://github.com/krishnamudgal" target="_blank" rel="noreferrer">
-                github.com/krishnamudgal
-              </a>
-            </p>
-            <div className="mx-auto mt-5 h-[2px] w-full bg-marker-strong" />
+            <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[3fr_2fr] lg:gap-10">
+              <div>
+                <h1 className="mx-auto max-w-3xl text-center text-3xl font-bold leading-tight sm:text-[2.6rem]">
+                  A Portfolio of Krishna Mudgal:
+                  <br />A Research Perspective
+                </h1>
+                <p className="mt-5 text-center text-sm uppercase tracking-[0.22em]">Krishna Mudgal</p>
+                <p className="mt-2 text-center text-[0.86rem] italic">
+                  New Delhi, India · <a className="underline" href="tel:+919650317583">+91-96503-17583</a> ·{" "}
+                  <a className="underline" href="mailto:mudgalkrishna92@gmail.com">mudgalkrishna92@gmail.com</a> ·{" "}
+                  <a className="underline" href="https://linkedin.com/in/krishnamudgal" target="_blank" rel="noreferrer">
+                    linkedin.com/in/krishnamudgal
+                  </a>{" "}
+                  ·{" "}
+                  <a className="underline" href="https://github.com/krishnamudgal" target="_blank" rel="noreferrer">
+                    github.com/krishnamudgal
+                  </a>
+                </p>
+                <div className="mx-auto mt-5 h-[2px] w-full bg-marker-strong" />
 
-            <div className="mx-auto mt-7 max-w-3xl px-2 sm:px-12">
-              <h2 className="text-center text-[0.9rem] font-bold uppercase tracking-[0.2em]">Abstract</h2>
-              <p className="justify-paper mt-2 text-[0.95rem] leading-[1.55]">
-                AI &amp; ML developer with a focus on deep learning, sequence modeling, and generative AI. This
-                portfolio presents a candidate research profile centered on building systems from first principles and
-                understanding why they work — spanning memory-augmented architectures, graph neural networks for
-                genomics, and reproducibility studies in deep learning. Interested in how models learn, adapt, and
-                generalize, especially in settings where data is sparse or the problem is genuinely novel.
-              </p>
-              <p className="mt-4 text-[0.9rem] leading-[2.1]">
-                <span className="font-bold">Keywords:</span>{" "}
-                {["deep learning", "sequence modeling", "generative AI", "graph neural networks", "reproducibility research"].map(
-                  (k) => (
-                    <span key={k} className="marker mr-2 whitespace-nowrap">
-                      {k}
-                    </span>
-                  ),
-                )}
-              </p>
+                <div className="mx-auto mt-7 max-w-3xl">
+                  <h2 className="text-center text-[0.9rem] font-bold uppercase tracking-[0.2em]">Abstract</h2>
+                  <p className="justify-paper mt-2 text-[0.95rem] leading-[1.55]">
+                    AI &amp; ML developer with a focus on deep learning, sequence modeling, and generative AI. This
+                    portfolio presents a candidate research profile centered on building systems from first principles and
+                    understanding why they work — spanning memory-augmented architectures, graph neural networks for
+                    genomics, and reproducibility studies in deep learning. Interested in how models learn, adapt, and
+                    generalize, especially in settings where data is sparse or the problem is genuinely novel.
+                  </p>
+                  <p className="mt-4 text-[0.9rem] leading-[2.1]">
+                    <span className="font-bold">Keywords:</span>{" "}
+                    {["deep learning", "sequence modeling", "generative AI", "graph neural networks", "reproducibility research"].map(
+                      (k) => (
+                        <span key={k} className="marker mr-2 whitespace-nowrap">
+                          {k}
+                        </span>
+                      ),
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <AuthorFigure />
             </div>
           </Reveal>
 
