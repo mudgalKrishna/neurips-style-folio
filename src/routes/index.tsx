@@ -199,6 +199,76 @@ const FIGURES = [
   },
 ];
 
+const STATS = [
+  { value: "83%", label: "AMR prediction accuracy", top: "16%", highlight: false },
+  { value: "4", label: "architectures reproduced from scratch", top: "46%", highlight: true },
+  { value: "Top 50/110", label: "HackLLM ranking", top: "76%", highlight: false },
+];
+
+function AuthorFigure() {
+  return (
+    <div className="mt-10 lg:mt-0">
+      {/* Desktop: figure with leader-line callouts */}
+      <div className="relative mx-auto hidden max-w-md lg:block">
+        <figure className="w-[64%]">
+          <div className="border border-ink bg-paper p-2">
+            <img
+              src={portrait.url}
+              alt="Illustrated portrait of Krishna Mudgal in retro scientific-illustration style"
+              className="block w-full"
+              loading="lazy"
+            />
+          </div>
+          <figcaption className="mt-2 text-center text-[0.82rem]">
+            <span className="font-bold">Figure 0:</span> The Author.
+          </figcaption>
+        </figure>
+
+        {STATS.map((s) => (
+          <div
+            key={s.value}
+            className="absolute flex items-center"
+            style={{ left: "64%", top: s.top, right: 0 }}
+          >
+            <span className="h-[5px] w-[5px] shrink-0 -translate-x-[3px] rounded-full bg-ink" />
+            <span className="h-px w-6 shrink-0 bg-ink" />
+            <span className={`ml-2 text-[0.72rem] leading-[1.35] ${s.highlight ? "marker" : ""}`}>
+              <span className="font-bold">{s.value}</span> — {s.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile / tablet: centered figure with stat chips */}
+      <div className="lg:hidden">
+        <figure className="mx-auto max-w-sm">
+          <div className="border border-ink bg-paper p-2">
+            <img
+              src={portrait.url}
+              alt="Illustrated portrait of Krishna Mudgal in retro scientific-illustration style"
+              className="block w-full"
+              loading="lazy"
+            />
+          </div>
+          <figcaption className="mt-2 text-center text-[0.82rem]">
+            <span className="font-bold">Figure 0:</span> The Author.
+          </figcaption>
+        </figure>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {STATS.map((s) => (
+            <span
+              key={s.value}
+              className={`border border-ink px-2 py-1 text-[0.72rem] ${s.highlight ? "bg-marker" : "bg-paper"}`}
+            >
+              <span className="font-bold">{s.value}</span> — {s.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Index() {
   const [copied, setCopied] = useState(false);
 
