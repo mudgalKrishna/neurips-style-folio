@@ -24,10 +24,10 @@ const BOOK_BOX = { left: 1050, top: 950, right: 1850, bottom: 1340 };
 // toward the quad's center so the video never spills onto the bezel even
 // with a few px of measurement error.
 const SCREEN_QUAD: [number, number][] = [
-  [806, 767], // top-left
-  [1158, 759], // top-right
-  [1174, 985], // bottom-right
-  [801, 1011], // bottom-left
+  [793, 761], // top-left
+  [1170, 754], // top-right
+  [1185, 991], // bottom-right
+  [797, 1013], // bottom-left
 ];
 
 const VIDEO_SRC = "/lab-training-loop.mp4";
@@ -292,7 +292,10 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
               muted
               playsInline
               className="h-full w-full object-cover"
-              style={{ filter: "brightness(0.95) contrast(1.05)" }}
+              style={{
+                filter:
+                  "sepia(0.45) saturate(1.25) hue-rotate(-6deg) brightness(0.92) contrast(1.08)",
+              }}
             />
             {/* generous blurred patch masking the source clip's watermark */}
             <div
