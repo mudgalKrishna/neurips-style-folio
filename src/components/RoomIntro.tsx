@@ -2,36 +2,111 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Illustrated 2D room intro, staged to read as 3D:
- * - the whole scene tilts in perspective toward the cursor (rotateX/rotateY),
- *   which sells depth far better than flat translation alone
+ * - the whole scene tilts in perspective toward the cursor (rotateX/rotateY)
  * - a slow idle sway keeps it alive even with no pointer input
- * - drifting light-dust particles add a layer of motion on top of the flat art
- * - a precisely-mapped clickable hotspot sits over the open journal, recomputed
- *   on resize since object-fit: cover crops differently per aspect ratio
+ * - drifting light-dust particles add motion on top of the flat art
+ * - a precisely-mapped clickable hotspot sits over the open journal
+ * - a looping training-viz video is corner-pinned onto the tilted laptop
+ *   screen using a proper homography (perspective) transform, so it warps
+ *   to fit the screen's actual trapezoid instead of looking pasted on
  */
 
 const IMAGE_SRC = "/room-scene.png";
 const IMAGE_NATURAL_WIDTH = 2752;
 const IMAGE_NATURAL_HEIGHT = 1536;
 
-// Bounding box of the open book in the ORIGINAL image's pixel coordinates.
+// Bounding box of the open book, in the ORIGINAL image's pixel coordinates.
 const BOOK_BOX = { left: 1050, top: 950, right: 1850, bottom: 1340 };
+
+// Four corners of the laptop screen (top-left, top-right, bottom-right,
+// bottom-left), in the ORIGINAL image's pixel coordinates. The screen is
+// tilted in the illustration, so this is a quad, not an axis-aligned box.
+const SCREEN_QUAD: [number, number][] = [
+  [805, 758], // top-left
+  [1143, 732], // top-right
+  [1155, 988], // bottom-right
+  [795, 1013], // bottom-left
+];
+
+const VIDEO_SRC = "/lab-training-loop.mp4";
+const VIDEO_WIDTH = 1280;
+const VIDEO_HEIGHT = 720;
+
+// Gemini watermark sits bottom-center-right of the source clip; masked with
+// a soft dark vignette matching the clip's background rather than a hard crop.
+const LOGO_MASK = { left: 1085, top: 545, width: 140, height: 120 };
 
 const DUST_MOTES = Array.from({ length: 14 }, (_, i) => ({
   id: i,
-  left: 4 + Math.random() * 34, // cluster loosely near the window, left third
+  left: 4 + Math.random() * 34,
   top: 8 + Math.random() * 55,
   size: 2 + Math.random() * 4,
   duration: 9 + Math.random() * 10,
   delay: -Math.random() * 12,
 }));
 
-function useCoverMapping(
+/** Solve the 8-unknown linear system for a 4-point projective homography. */
+function solveHomography(src: [number, number][], dst: [number, number][]): number[] {
+  const A: number[][] = [];
+  const B: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const sp = src[i]!;
+    const dp = dst[i]!;
+    const [x, y] = sp;
+    const [X, Y] = dp;
+    A.push([x, y, 1, 0, 0, 0, -x * X, -y * X]);
+    B.push(X);
+    A.push([0, 0, 0, x, y, 1, -x * Y, -y * Y]);
+    B.push(Y);
+  }
+
+  // Gaussian elimination with partial pivoting on the augmented 8x8 system.
+  const n = 8;
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(A[row]![col]!) > Math.abs(A[pivot]![col]!)) pivot = row;
+    }
+    const tmpRow = A[col]!;
+    A[col] = A[pivot]!;
+    A[pivot] = tmpRow;
+    const tmpB = B[col]!;
+    B[col] = B[pivot]!;
+    B[pivot] = tmpB;
+
+    const diag = A[col]![col]! || 1e-9;
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue;
+      const factor = A[row]![col]! / diag;
+      for (let k = col; k < n; k++) A[row]![k] = A[row]![k]! - factor * A[col]![k]!;
+      B[row] = B[row]! - factor * B[col]!;
+    }
+  }
+
+  return B.map((b, i) => b / (A[i]![i]! || 1e-9));
+}
+
+function homographyToMatrix3d(h: number[]): string {
+  const h11 = h[0]!;
+  const h12 = h[1]!;
+  const h13 = h[2]!;
+  const h21 = h[3]!;
+  const h22 = h[4]!;
+  const h23 = h[5]!;
+  const h31 = h[6]!;
+  const h32 = h[7]!;
+  const m = [h11, h21, 0, h31, h12, h22, 0, h32, 0, 0, 1, 0, h13, h23, 0, 1];
+  return `matrix3d(${m.map((v) => v.toFixed(6)).join(",")})`;
+}
+
+type PointMapper = (sx: number, sy: number) => { x: number; y: number };
+
+function useImageCoverMap(
   containerRef: React.RefObject<HTMLDivElement | null>,
   naturalWidth: number,
   naturalHeight: number,
 ) {
-  const [rect, setRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [mapFn, setMapFn] = useState<PointMapper | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -59,15 +134,11 @@ function useCoverMapping(
         cropX = (naturalWidth - visibleWidthSrc) / 2;
       }
 
-      const toContainer = (sx: number, sy: number) => ({
+      const fn = (sx: number, sy: number) => ({
         x: (sx - cropX) * scale,
         y: (sy - cropY) * scale,
       });
-
-      const p1 = toContainer(BOOK_BOX.left, BOOK_BOX.top);
-      const p2 = toContainer(BOOK_BOX.right, BOOK_BOX.bottom);
-
-      setRect({ left: p1.x, top: p1.y, width: p2.x - p1.x, height: p2.y - p1.y });
+      setMapFn(() => fn);
     };
 
     compute();
@@ -76,7 +147,7 @@ function useCoverMapping(
     return () => ro.disconnect();
   }, [containerRef, naturalWidth, naturalHeight]);
 
-  return rect;
+  return mapFn;
 }
 
 export function RoomIntro({ onEnter }: { onEnter: () => void }) {
@@ -85,21 +156,43 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
   const [hovered, setHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
-  const pointer = useRef({ x: 0, y: 0 }); // normalized -1..1, smoothed target
+  const pointer = useRef({ x: 0, y: 0 });
   const current = useRef({ rx: 0, ry: 0, tx: 0, ty: 0 });
   const rafRef = useRef<number>(undefined);
   const startTime = useRef(performance.now());
 
-  const bookRect = useCoverMapping(containerRef, IMAGE_NATURAL_WIDTH, IMAGE_NATURAL_HEIGHT);
+  const mapPoint = useImageCoverMap(containerRef, IMAGE_NATURAL_WIDTH, IMAGE_NATURAL_HEIGHT);
   const dustMotes = useMemo(() => DUST_MOTES, []);
+
+  const bookRect = useMemo(() => {
+    if (!mapPoint) return null;
+    const p1 = mapPoint(BOOK_BOX.left, BOOK_BOX.top);
+    const p2 = mapPoint(BOOK_BOX.right, BOOK_BOX.bottom);
+    return { left: p1.x, top: p1.y, width: p2.x - p1.x, height: p2.y - p1.y };
+  }, [mapPoint]);
+
+  const screenMatrix3d = useMemo(() => {
+    if (!mapPoint) return null;
+    const dst = SCREEN_QUAD.map(([sx, sy]) => {
+      const p = mapPoint(sx, sy);
+      return [p.x, p.y] as [number, number];
+    });
+    const src: [number, number][] = [
+      [0, 0],
+      [VIDEO_WIDTH, 0],
+      [VIDEO_WIDTH, VIDEO_HEIGHT],
+      [0, VIDEO_HEIGHT],
+    ];
+    const h = solveHomography(src, dst);
+    return homographyToMatrix3d(h);
+  }, [mapPoint]);
 
   useEffect(() => {
     const loop = (t: number) => {
       const elapsed = (t - startTime.current) / 1000;
 
-      // gentle idle sway, always running
-      const idleRy = Math.sin(elapsed * (2 * Math.PI) / 7) * 1.4;
-      const idleRx = Math.sin(elapsed * (2 * Math.PI) / 9 + 1) * 0.7;
+      const idleRy = (Math.sin(elapsed * (2 * Math.PI)) / 7) * 1.4;
+      const idleRx = (Math.sin(elapsed * (2 * Math.PI)) / 9 + 1) * 0.7;
 
       const targetRy = idleRy + pointer.current.x * 4.5;
       const targetRx = idleRx - pointer.current.y * 2.6;
@@ -172,6 +265,45 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
           className="h-full w-full object-cover"
           style={{ opacity: imgLoaded ? 1 : 0, transition: "opacity 900ms ease" }}
         />
+
+        {/* looping training-viz video, corner-pinned onto the tilted laptop screen */}
+        {imgLoaded && screenMatrix3d && (
+          <div
+            aria-hidden
+            className="absolute overflow-hidden"
+            style={{
+              top: 0,
+              left: 0,
+              width: VIDEO_WIDTH,
+              height: VIDEO_HEIGHT,
+              transform: screenMatrix3d,
+              transformOrigin: "0 0",
+              pointerEvents: "none",
+            }}
+          >
+            <video
+              src={VIDEO_SRC}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-full w-full object-cover"
+              style={{ filter: "brightness(0.95) contrast(1.05)" }}
+            />
+            {/* soft vignette masking the source clip's watermark */}
+            <div
+              style={{
+                position: "absolute",
+                left: LOGO_MASK.left,
+                top: LOGO_MASK.top,
+                width: LOGO_MASK.width,
+                height: LOGO_MASK.height,
+                background:
+                  "radial-gradient(closest-side, rgba(20,19,17,0.95), rgba(20,19,17,0.6) 55%, rgba(20,19,17,0) 80%)",
+              }}
+            />
+          </div>
+        )}
 
         {/* drifting light dust, on top of the image, inside the same tilted layer */}
         {imgLoaded &&
