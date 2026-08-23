@@ -24,10 +24,10 @@ const BOOK_BOX = { left: 1050, top: 950, right: 1850, bottom: 1340 };
 // toward the quad's center so the video never spills onto the bezel even
 // with a few px of measurement error.
 const SCREEN_QUAD: [number, number][] = [
-  [791, 757], // top-left
-  [1178, 750], // top-right
-  [1193, 995], // bottom-right
-  [795, 1019], // bottom-left
+  [793, 761], // top-left
+  [1170, 754], // top-right
+  [1185, 991], // bottom-right
+  [797, 1013], // bottom-left
 ];
 
 const VIDEO_SRC = "/lab-training-loop.mp4";
