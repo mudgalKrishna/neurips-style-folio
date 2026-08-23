@@ -19,22 +19,25 @@ const IMAGE_NATURAL_HEIGHT = 1536;
 const BOOK_BOX = { left: 1050, top: 950, right: 1850, bottom: 1340 };
 
 // Four corners of the laptop screen (top-left, top-right, bottom-right,
-// bottom-left), in the ORIGINAL image's pixel coordinates. The screen is
-// tilted in the illustration, so this is a quad, not an axis-aligned box.
+// bottom-left), in the ORIGINAL image's pixel coordinates. Measured against
+// the inner bezel edge (not the outer plastic), with a small safety inset
+// toward the quad's center so the video never spills onto the bezel even
+// with a few px of measurement error.
 const SCREEN_QUAD: [number, number][] = [
-  [805, 758], // top-left
-  [1143, 732], // top-right
-  [1155, 988], // bottom-right
-  [795, 1013], // bottom-left
+  [806, 767], // top-left
+  [1158, 759], // top-right
+  [1174, 985], // bottom-right
+  [801, 1011], // bottom-left
 ];
 
 const VIDEO_SRC = "/lab-training-loop.mp4";
 const VIDEO_WIDTH = 1280;
 const VIDEO_HEIGHT = 720;
 
-// Gemini watermark sits bottom-center-right of the source clip; masked with
-// a soft dark vignette matching the clip's background rather than a hard crop.
-const LOGO_MASK = { left: 1085, top: 545, width: 140, height: 120 };
+// Gemini watermark sits bottom-right of the source clip, centered ~(1160,600)
+// consistently across frames; masked with a generous blurred solid patch
+// matching the clip's own background rather than a hard crop.
+const LOGO_MASK = { left: 1055, top: 515, width: 220, height: 180 };
 
 const DUST_MOTES = Array.from({ length: 14 }, (_, i) => ({
   id: i,
@@ -279,6 +282,7 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
               transform: screenMatrix3d,
               transformOrigin: "0 0",
               pointerEvents: "none",
+              boxShadow: "inset 0 0 18px 10px rgba(20,19,17,0.9)",
             }}
           >
             <video
@@ -290,7 +294,7 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
               className="h-full w-full object-cover"
               style={{ filter: "brightness(0.95) contrast(1.05)" }}
             />
-            {/* soft vignette masking the source clip's watermark */}
+            {/* generous blurred patch masking the source clip's watermark */}
             <div
               style={{
                 position: "absolute",
@@ -298,8 +302,8 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
                 top: LOGO_MASK.top,
                 width: LOGO_MASK.width,
                 height: LOGO_MASK.height,
-                background:
-                  "radial-gradient(closest-side, rgba(20,19,17,0.95), rgba(20,19,17,0.6) 55%, rgba(20,19,17,0) 80%)",
+                background: "#1d1d1b",
+                filter: "blur(22px)",
               }}
             />
           </div>
