@@ -24,10 +24,10 @@ const BOOK_BOX = { left: 1050, top: 950, right: 1850, bottom: 1340 };
 // toward the quad's center so the video never spills onto the bezel even
 // with a few px of measurement error.
 const SCREEN_QUAD: [number, number][] = [
-  [793, 761], // top-left
-  [1170, 754], // top-right
-  [1185, 991], // bottom-right
-  [797, 1013], // bottom-left
+  [806, 767], // top-left
+  [1158, 759], // top-right
+  [1174, 985], // bottom-right
+  [801, 1011], // bottom-left
 ];
 
 const VIDEO_SRC = "/lab-training-loop.mp4";
@@ -174,6 +174,29 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
     return { left: p1.x, top: p1.y, width: p2.x - p1.x, height: p2.y - p1.y };
   }, [mapPoint]);
 
+  // Floating "ghost" preview of the portfolio's first page, projecting up
+  // off the journal, and the combined clickable region spanning it + the book.
+  const floatRect = useMemo(() => {
+    if (!bookRect) return null;
+    const width = bookRect.width * 0.6;
+    const height = width * 1.32;
+    return {
+      left: bookRect.left + bookRect.width / 2 - width / 2,
+      top: bookRect.top - height - bookRect.height * 0.16,
+      width,
+      height,
+    };
+  }, [bookRect]);
+
+  const hotspotRect = useMemo(() => {
+    if (!bookRect || !floatRect) return null;
+    const left = Math.min(floatRect.left, bookRect.left);
+    const top = floatRect.top;
+    const right = Math.max(floatRect.left + floatRect.width, bookRect.left + bookRect.width);
+    const bottom = bookRect.top + bookRect.height;
+    return { left, top, width: right - left, height: bottom - top };
+  }, [bookRect, floatRect]);
+
   const screenMatrix3d = useMemo(() => {
     if (!mapPoint) return null;
     const dst = SCREEN_QUAD.map(([sx, sy]) => {
@@ -292,21 +315,16 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
               muted
               playsInline
               preload="auto"
-              disablePictureInPicture
               className="h-full w-full object-cover"
               style={{
+                filter: "blur(0.3px) brightness(0.95) contrast(1.05)",
                 imageRendering: "auto",
                 willChange: "transform, filter",
                 transform: "translateZ(0)",
                 backfaceVisibility: "hidden",
-                filter:
-                  "blur(0.3px) sepia(0.45) saturate(1.25) hue-rotate(-6deg) brightness(0.92) contrast(1.08)",
-                maskImage:
-                  "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
+                maskImage: "radial-gradient(ellipse 100% 100% at 50% 50%, black 82%, transparent 100%)",
                 WebkitMaskImage:
-                  "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
-                maskComposite: "intersect",
-                WebkitMaskComposite: "source-in",
+                  "radial-gradient(ellipse 100% 100% at 50% 50%, black 82%, transparent 100%)",
               }}
             />
             {/* generous blurred patch masking the source clip's watermark */}
@@ -342,8 +360,8 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
             />
           ))}
 
-        {/* click hotspot over the open book, tilts together with the image */}
-        {bookRect && (
+        {/* click hotspot spanning the floating preview + the journal, tilts with the image */}
+        {bookRect && floatRect && hotspotRect && (
           <button
             type="button"
             onClick={handleOpen}
@@ -352,21 +370,80 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
             aria-label="Open the portfolio"
             className="absolute cursor-pointer border-0 bg-transparent p-0"
             style={{
-              left: bookRect.left,
-              top: bookRect.top,
-              width: bookRect.width,
-              height: bookRect.height,
+              left: hotspotRect.left,
+              top: hotspotRect.top,
+              width: hotspotRect.width,
+              height: hotspotRect.height,
             }}
           >
+            {/* glow over the journal itself */}
             <span
               aria-hidden
-              className="absolute inset-[-14%] rounded-[40%] transition-opacity duration-300"
+              className="absolute rounded-[40%] transition-opacity duration-300"
               style={{
+                left: bookRect.left - hotspotRect.left - bookRect.width * 0.14,
+                top: bookRect.top - hotspotRect.top - bookRect.height * 0.14,
+                width: bookRect.width * 1.28,
+                height: bookRect.height * 1.28,
                 background:
                   "radial-gradient(closest-side, rgb(240 223 160 / 0.55), rgb(240 223 160 / 0.15) 60%, transparent 80%)",
                 opacity: hovered && phase === "idle" ? 1 : 0,
               }}
             />
+
+            {/* floating, blurred ghost of the portfolio's first page, projecting up off the journal */}
+            <div
+              aria-hidden
+              className="absolute"
+              style={{
+                left: floatRect.left - hotspotRect.left,
+                top: floatRect.top - hotspotRect.top,
+                width: floatRect.width,
+                height: floatRect.height,
+                animation: "card-bob 4.5s ease-in-out infinite",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 3,
+                  background: "#FAF6EC",
+                  border: "1px solid rgba(17,17,17,0.28)",
+                  boxShadow:
+                    "0 14px 34px rgba(0,0,0,0.32), 0 0 26px rgba(240,223,160,0.28)",
+                  filter: hovered ? "blur(1px)" : "blur(3px)",
+                  opacity: hovered ? 0.82 : 0.55,
+                  transform: hovered ? "scale(1.045)" : "scale(1)",
+                  transition: "filter 300ms ease, opacity 300ms ease, transform 300ms ease",
+                  padding: "13% 12%",
+                }}
+              >
+                <div style={{ height: "7%", width: "68%", background: "rgba(17,17,17,0.62)", marginBottom: "9%" }} />
+                <div style={{ height: "3.5%", width: "42%", background: "rgba(17,17,17,0.32)", marginBottom: "12%" }} />
+                <div style={{ height: "2.6%", width: "92%", background: "rgba(17,17,17,0.22)", marginBottom: "6%" }} />
+                <div style={{ height: "2.6%", width: "86%", background: "rgba(17,17,17,0.22)", marginBottom: "6%" }} />
+                <div style={{ height: "2.6%", width: "90%", background: "rgba(17,17,17,0.22)", marginBottom: "6%" }} />
+                <div style={{ height: "2.6%", width: "70%", background: "rgba(17,17,17,0.22)" }} />
+              </div>
+
+              {/* crisp, unblurred label — always legible regardless of the card's blur */}
+              <div
+                className="absolute left-1/2 rounded-full border px-3 py-1"
+                style={{
+                  bottom: -14,
+                  transform: `translateX(-50%) scale(${hovered ? 1.06 : 1})`,
+                  borderColor: "rgba(17,17,17,0.25)",
+                  background: "rgba(250,246,236,0.94)",
+                  backdropFilter: "blur(4px)",
+                  transition: "transform 300ms ease",
+                }}
+              >
+                <p className="whitespace-nowrap text-[0.66rem] uppercase tracking-[0.18em] text-[#111111]">
+                  click to enter
+                </p>
+              </div>
+            </div>
           </button>
         )}
       </div>
@@ -384,22 +461,6 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
         style={{ opacity: phase === "idle" ? 0 : 1, transition: "opacity 650ms ease" }}
       />
 
-      <div
-        className="pointer-events-none absolute bottom-7 left-1/2 -translate-x-1/2 rounded-full border px-4 py-1.5"
-        style={{
-          borderColor: "rgba(17,17,17,0.25)",
-          background: "rgba(250,246,236,0.88)",
-          backdropFilter: "blur(4px)",
-          opacity: phase === "idle" && imgLoaded ? 1 : 0,
-          transform: `translateX(-50%) translateY(${phase === "idle" && imgLoaded ? 0 : 6}px) scale(${hovered ? 1.04 : 1})`,
-          transition: "opacity 500ms ease, transform 300ms ease",
-        }}
-      >
-        <p className="text-[0.72rem] uppercase tracking-[0.2em] text-[#111111]">
-          click the journal to enter
-        </p>
-      </div>
-
       <style>{`
         @keyframes dust-drift {
           0%   { transform: translate(0, 0); opacity: 0; }
@@ -407,6 +468,10 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
           50%  { transform: translate(6px, -22px); opacity: 0.5; }
           85%  { opacity: 0.7; }
           100% { transform: translate(-4px, -40px); opacity: 0; }
+        }
+        @keyframes card-bob {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-9px); }
         }
       `}</style>
     </div>
