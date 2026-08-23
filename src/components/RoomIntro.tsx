@@ -291,10 +291,16 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
               loop
               muted
               playsInline
+              preload="auto"
+              disablePictureInPicture
               className="h-full w-full object-cover"
               style={{
+                imageRendering: "auto",
+                willChange: "transform, filter",
+                transform: "translateZ(0)",
+                backfaceVisibility: "hidden",
                 filter:
-                  "sepia(0.45) saturate(1.25) hue-rotate(-6deg) brightness(0.92) contrast(1.08)",
+                  "blur(0.3px) sepia(0.45) saturate(1.25) hue-rotate(-6deg) brightness(0.92) contrast(1.08)",
                 maskImage:
                   "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
                 WebkitMaskImage:
