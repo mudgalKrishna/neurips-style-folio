@@ -295,6 +295,12 @@ export function RoomIntro({ onEnter }: { onEnter: () => void }) {
               style={{
                 filter:
                   "sepia(0.45) saturate(1.25) hue-rotate(-6deg) brightness(0.92) contrast(1.08)",
+                maskImage:
+                  "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
+                maskComposite: "intersect",
+                WebkitMaskComposite: "source-in",
               }}
             />
             {/* generous blurred patch masking the source clip's watermark */}
